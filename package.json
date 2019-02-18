@@ -1,7 +1,7 @@
 {
   "name": "lebah",
   "version": "0.1.0",
-  "description": "",
+  "description": "LEB2 Assessments Helper",
   "main": "main.js",
   "directories": {
     "test": "test"
