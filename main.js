@@ -1,8 +1,9 @@
 const fs = require('fs')
+const { ncp } = require('ncp')
 const glob = require('glob')
 const unzipper = require('unzipper')
 const { unrar } = require('unrar-promise')
-const { ncp } = require('ncp')
+const rmdir = require('rimraf')
 
 function getStudentId(path) {
   let paths = path.split('/')
@@ -118,8 +119,6 @@ async function main() {
   let studentDirs = glob.sync('temp/**/')
   studentDirs.splice(0, 1)
 
-  console.log(studentDirs)
-
   console.log('Prefixing student id ...')
 
   studentDirs.forEach(path => {
@@ -137,12 +136,38 @@ async function main() {
     })
   })
 
-  // assConfig.tasks.forEach(task => {
-  //   let files = glob.sync('temp/**/*'+task+'*.*')
-  //   console.log(files)
-  // })
-  
-  
+  // Categorize task
+  fs.mkdirSync('output')
+
+  assConfig.tasks.forEach(task => {
+    let files = glob.sync('temp/**/*' + task + '*.*')
+    fs.mkdirSync('output/'+task)
+
+    console.log('Categorizing tasks ' + task + ' (' + files.length +' files)...')
+    
+    files.forEach(file => {
+      let newFile = assConfig.outputPath + '/' + task + file.substr(file.lastIndexOf('/'))
+      fs.renameSync(file, newFile)
+    })
+  })
+
+  let otherFiles = glob.sync('temp/**/*.*')
+
+  if (otherFiles.length > 0) {
+    console.log('Found ' + otherFiles.length + ' uncategorized files (other folder)')
+    
+    fs.mkdirSync('output/other')
+
+    otherFiles.forEach(file => {
+      let newFile = assConfig.outputPath + '/other' + file.substr(file.lastIndexOf('/'))
+      fs.renameSync(file, newFile)
+    })
+  }
+
+  // Remove temp files
+  console.log('Removing temp...')
+
+  rmdir('temp', () => console.log('Complete! Enjoy grading :)')) 
 }
 
 
