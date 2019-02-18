@@ -1,0 +1,18 @@
+{
+  "name": "lebah",
+  "version": "0.1.0",
+  "description": "",
+  "main": "main.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Th1nkK1D",
+  "license": "MIT",
+  "dependencies": {
+    "glob": "^7.1.3",
+    "unzipper": "^0.9.11"
+  }
+}
