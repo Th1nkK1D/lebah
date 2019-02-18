@@ -4,15 +4,13 @@ const unzipper = require('unzipper')
 const { unrar } = require('unrar-promise')
 const { ncp } = require('ncp')
 
-function getStudentDir(path) {
+function getStudentId(path) {
   let paths = path.split('/')
   return paths[0]
 }
 
 function getCurrentDir(path) {
-  let paths = path.split('/')
-  paths.splice(paths.length-1, 1)
-  return paths.join('/')
+  return path.substring(0, path.lastIndexOf('/'))
 }
 
 function copyAll(src, dst) {
@@ -27,17 +25,19 @@ function copyAll(src, dst) {
   })
 }
 
-function extractRars(files, removeSource = false) {
+function removeAll(files) {
+  files.forEach(file => {
+    fs.unlinkSync(file)
+  })
+}
+
+function extractRars(files) {
   let left = files.length
 
   return new Promise((resolve, reject) => {
     files.forEach(file => {
       unrar(file, getCurrentDir(file)).then(() => {
         left--
-
-        if (removeSource) {
-          fs.unlinkSync(file)
-        }
 
         if (left === 0) {
           resolve(files.length)
@@ -47,7 +47,7 @@ function extractRars(files, removeSource = false) {
   })
 }
 
-function extractZips(files, removeSource = false) {
+function extractZips(files) {
   let left = files.length
 
   return new Promise((resolve, reject) => {
@@ -56,10 +56,6 @@ function extractZips(files, removeSource = false) {
         .pipe(unzipper.Extract({ path: getCurrentDir(file) }))
         .on('close', () => {
           left--
-
-          if (removeSource) {
-            fs.unlinkSync(file)
-          }
 
           if (left === 0) {
             resolve(files.length)
@@ -88,18 +84,15 @@ async function main() {
 
   const assConfig = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
 
+  // Create temp
   console.log('Creating temp...')
 
   await copyAll(assConfig.inputPath, 'temp')
   
+  // Extract files
   let zipFiles = glob.sync('temp'+'/**/*.zip')
   let rarFiles = glob.sync('temp'+'/**/*.rar')
   let removeSource = true
-
-  // zipFiles.forEach(file => {
-  //   console.log(getCurrentDir(file))
-  // })
-
 
   while (zipFiles.length > 0) {
     console.log('Extracting '+zipFiles.length+' zip files + '+rarFiles.length+' rar files ...')
@@ -107,14 +100,47 @@ async function main() {
     await extractZips(zipFiles, removeSource)
     await extractRars(rarFiles, removeSource)
 
-    zipFiles = glob.sync('temp'+'/**/*.zip')
-    rarFiles = glob.sync('temp'+'/**/*.rar')
+    removeAll(zipFiles.concat(rarFiles))
+
+    zipFiles = glob.sync('temp/**/*.zip')
+    rarFiles = glob.sync('temp/**/*.rar')
   }
 
-  assConfig.tasks.forEach(task => {
-    let files = glob.sync('temp/**/*'+task+'*.*')
-    console.log(files)
+  // Remove unused file
+  assConfig.ignore.forEach(type => {
+    let files = glob.sync('temp/**/'+type)
+    console.log('Removing '+files.length+' '+type+' ...')
+    
+    removeAll(files)
   })
+
+  // Prefix student id
+  let studentDirs = glob.sync('temp/**/')
+  studentDirs.splice(0, 1)
+
+  console.log(studentDirs)
+
+  console.log('Prefixing student id ...')
+
+  studentDirs.forEach(path => {
+    let studentId = path.substring(path.indexOf('/')+1, path.indexOf('_'))
+
+    let files = glob.sync(path+'*.*')
+
+    files.forEach(file => {
+      let fileName = file.substring(file.lastIndexOf('/') + 1)
+      
+      if(fileName.indexOf(studentId) !== 0) {
+        let newFile = file.substr(0, file.length-fileName.length) + studentId + '_' + file.substr(file.length-fileName.length)
+        fs.renameSync(file, newFile)
+      }
+    })
+  })
+
+  // assConfig.tasks.forEach(task => {
+  //   let files = glob.sync('temp/**/*'+task+'*.*')
+  //   console.log(files)
+  // })
   
   
 }
