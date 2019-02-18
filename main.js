@@ -1,6 +1,27 @@
 const fs = require('fs')
 const glob = require('glob')
 const unzipper = require('unzipper')
+const { unrar } = require('unrar-promise')
+
+function extractRars(files, path, removeSource = false) {
+  let left = files.length
+
+  return new Promise((resolve, reject) => {
+    files.forEach(file => {
+      unrar(file, './output').then(() => {
+        left--
+
+        if (removeSource) {
+          fs.unlinkSync(file)
+        }
+
+        if (left === 0) {
+          resolve(files.length)
+        }
+      })
+    })
+  })
+}
 
 function extractZips(files, path, removeSource = false) {
   let left = files.length
@@ -33,20 +54,21 @@ async function main() {
   const inputPath = process.argv[2]
   const outputPath = process.argv[3]
   
-  // Expand all zip
   let zipFiles = glob.sync(inputPath+'/**/*.zip')
+  let rarFiles = glob.sync(inputPath+'/**/*.rar')
   let removeSource = false
 
   while (zipFiles.length > 0) {
-    console.log('Extracting '+zipFiles.length+' zip files...')
+    console.log('Extracting '+zipFiles.length+' zip files + '+rarFiles.length+' rar files ...')
 
     await extractZips(zipFiles, outputPath, removeSource)
+    await extractRars(rarFiles, outputPath, removeSource)
 
     zipFiles = glob.sync(outputPath+'/**/*.zip')
+    rarFiles = glob.sync(outputPath+'/**/*.rar')
     removeSource = true
   }
   
-
   // console.log(glob.sync(outputPath+'/**/*.c'))
 }
 
